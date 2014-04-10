@@ -105,6 +105,21 @@ void command_prompt(void *pvParameters)
 
 }
 
+void semihost_sysinfo(void *pvParameters)
+{
+	int rnt = host_system("echo \'Write system info to \"./sysinfo\" periodically.\'");
+	char buf[1024] = "echo \'";
+	while(1) {
+		/* Clear buf */
+		strcpy (buf, "echo \'");
+		/* Retrieve task list */
+		vTaskList((signed char *)&buf[strlen(buf)]);
+		strcat (&buf[ strlen(buf) ], (const char*) "\' > ./sysinfo");
+		rnt = host_system(buf);
+		vTaskDelay(200);
+	}
+}
+
 int main()
 {
 	init_rs232();
@@ -126,8 +141,11 @@ int main()
 	/* Create a task to output text read from romfs. */
 	xTaskCreate(command_prompt,
 	            (signed portCHAR *) "Command Prompt",
-	            512 /* stack size */, NULL, tskIDLE_PRIORITY + 2, NULL);
+				512 /* stack size */, NULL, configMAX_PRIORITIES, NULL);
 
+	xTaskCreate(semihost_sysinfo,
+				(signed portCHAR *) "Semihost Sysinfo",
+	            512 /* stack size */, NULL, tskIDLE_PRIORITY + 2, NULL);
 	/* Start running the tasks. */
 	vTaskStartScheduler();
 

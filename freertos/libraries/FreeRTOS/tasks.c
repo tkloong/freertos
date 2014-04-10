@@ -1291,7 +1291,7 @@ unsigned portBASE_TYPE uxTaskGetNumberOfTasks( void )
 			report the task name, state and stack high water mark. */
 
 			*pcWriteBuffer = ( signed char ) 0x00;
-			strcat( ( char * ) pcWriteBuffer, ( const char * ) "\r\n" );
+			strcat( ( char * ) pcWriteBuffer, ( const char * ) "Task Name\t Status\t Priority\t Stack Remaining\t TCB Num\r\n" );
 
 			uxQueue = uxTopUsedPriority + ( unsigned portBASE_TYPE ) 1U;
 
