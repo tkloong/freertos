@@ -66,7 +66,7 @@ int parse_command(char *str, char *argv[]){
 }
 
 void ls_command(int n, char *argv[]){
-
+	fio_printf(1, "\r\n");
 }
 
 int filedump(const char *filename){
