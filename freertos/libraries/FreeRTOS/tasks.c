@@ -369,7 +369,7 @@ static tskTCB *prvAllocateTCBAndStack( unsigned short usStackDepth, portSTACK_TY
  */
 #if ( configUSE_TRACE_FACILITY == 1 )
 
-	static void prvListTaskWithinSingleList( const signed char *pcWriteBuffer, xList *pxList, signed char cStatus ) PRIVILEGED_FUNCTION;
+	static void prvListTaskWithinSingleList( const signed char *pcWriteBuffer, xList *pxList, signed char cStatus, char *specTask, char *isFound ) PRIVILEGED_FUNCTION;
 
 #endif
 
@@ -1278,9 +1278,10 @@ unsigned portBASE_TYPE uxTaskGetNumberOfTasks( void )
 
 #if ( configUSE_TRACE_FACILITY == 1 )
 
-	void vTaskList( signed char *pcWriteBuffer )
+	void vTaskList( signed char *pcWriteBuffer, char *specTask )
 	{
 	unsigned portBASE_TYPE uxQueue;
+	char isFound = 0;
 
 		/* This is a VERY costly function that should be used for debug only.
 		It leaves interrupts disabled for a LONG time. */
@@ -1299,40 +1300,45 @@ unsigned portBASE_TYPE uxTaskGetNumberOfTasks( void )
 			{
 				uxQueue--;
 
-				if( listLIST_IS_EMPTY( &( pxReadyTasksLists[ uxQueue ] ) ) == pdFALSE )
+				if( !isFound && listLIST_IS_EMPTY( &( pxReadyTasksLists[ uxQueue ] ) ) == pdFALSE )
 				{
-					prvListTaskWithinSingleList( pcWriteBuffer, ( xList * ) &( pxReadyTasksLists[ uxQueue ] ), tskREADY_CHAR );
+					prvListTaskWithinSingleList( pcWriteBuffer, ( xList * ) &( pxReadyTasksLists[ uxQueue ] ), tskREADY_CHAR, specTask, &isFound );
 				}
 			}while( uxQueue > ( unsigned short ) tskIDLE_PRIORITY );
 
-			if( listLIST_IS_EMPTY( pxDelayedTaskList ) == pdFALSE )
+			if( !isFound && listLIST_IS_EMPTY( pxDelayedTaskList ) == pdFALSE )
 			{
-				prvListTaskWithinSingleList( pcWriteBuffer, ( xList * ) pxDelayedTaskList, tskBLOCKED_CHAR );
+				prvListTaskWithinSingleList( pcWriteBuffer, ( xList * ) pxDelayedTaskList, tskBLOCKED_CHAR, specTask, &isFound );
 			}
 
-			if( listLIST_IS_EMPTY( pxOverflowDelayedTaskList ) == pdFALSE )
+			if( !isFound && listLIST_IS_EMPTY( pxOverflowDelayedTaskList ) == pdFALSE )
 			{
-				prvListTaskWithinSingleList( pcWriteBuffer, ( xList * ) pxOverflowDelayedTaskList, tskBLOCKED_CHAR );
+				prvListTaskWithinSingleList( pcWriteBuffer, ( xList * ) pxOverflowDelayedTaskList, tskBLOCKED_CHAR, specTask, &isFound );
 			}
 
 			#if( INCLUDE_vTaskDelete == 1 )
 			{
-				if( listLIST_IS_EMPTY( &xTasksWaitingTermination ) == pdFALSE )
+				if( !isFound && listLIST_IS_EMPTY( &xTasksWaitingTermination ) == pdFALSE )
 				{
-					prvListTaskWithinSingleList( pcWriteBuffer, &xTasksWaitingTermination, tskDELETED_CHAR );
+					prvListTaskWithinSingleList( pcWriteBuffer, &xTasksWaitingTermination, tskDELETED_CHAR, specTask, &isFound );
 				}
 			}
 			#endif
 
 			#if ( INCLUDE_vTaskSuspend == 1 )
 			{
-				if( listLIST_IS_EMPTY( &xSuspendedTaskList ) == pdFALSE )
+				if( !isFound && listLIST_IS_EMPTY( &xSuspendedTaskList ) == pdFALSE )
 				{
-					prvListTaskWithinSingleList( pcWriteBuffer, &xSuspendedTaskList, tskSUSPENDED_CHAR );
+					prvListTaskWithinSingleList( pcWriteBuffer, &xSuspendedTaskList, tskSUSPENDED_CHAR, specTask, &isFound );
 				}
 			}
 			#endif
+
+			if ( specTask[0] && !isFound ) {
+				strcpy( (char*) pcWriteBuffer, "Task not found\n");
+			}
 		}
+
 		xTaskResumeAll();
 	}
 
@@ -2161,7 +2167,7 @@ tskTCB *pxNewTCB;
 
 #if ( configUSE_TRACE_FACILITY == 1 )
 
-	static void prvListTaskWithinSingleList( const signed char *pcWriteBuffer, xList *pxList, signed char cStatus )
+	static void prvListTaskWithinSingleList( const signed char *pcWriteBuffer, xList *pxList, signed char cStatus, char *specTask, char *isFound )
 	{
 	volatile tskTCB *pxNextTCB, *pxFirstTCB;
 	unsigned short usStackRemaining;
@@ -2172,6 +2178,11 @@ tskTCB *pxNewTCB;
 		do
 		{
 			listGET_OWNER_OF_NEXT_ENTRY( pxNextTCB, pxList );
+			/* if specTask is not null, then check taskname */
+			if (specTask[0]) {
+				if (strcmp(specTask, (const char *)pxNextTCB->pcTaskName) != 0) continue;
+				else *isFound = 1;
+			}
 			#if ( portSTACK_GROWTH > 0 )
 			{
 				usStackRemaining = usTaskCheckFreeStackSpace( ( unsigned char * ) pxNextTCB->pxEndOfStack );
@@ -2185,7 +2196,7 @@ tskTCB *pxNewTCB;
 			sprintf( pcStatusString, ( char * ) "%s\t\t%c\t%u\t%u\t%u\r\n", pxNextTCB->pcTaskName, cStatus, ( unsigned int ) pxNextTCB->uxPriority, usStackRemaining, ( unsigned int ) pxNextTCB->uxTCBNumber );
 			strcat( ( char * ) pcWriteBuffer, ( char * ) pcStatusString );
 
-		} while( pxNextTCB != pxFirstTCB );
+		} while( !isFound && pxNextTCB != pxFirstTCB );
 	}
 
 #endif

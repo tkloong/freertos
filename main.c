@@ -102,18 +102,17 @@ void command_prompt(void *pvParameters)
 		else
 			fio_printf(2, "\r\n\"%s\" command not found.\r\n", argv[0]);
 	}
-
 }
 
 void semihost_sysinfo(void *pvParameters)
 {
 	int rnt = host_system("echo \'Write system info to \"./sysinfo\" periodically.\'");
-	char buf[1024] = "echo \'";
+	char buf[1024];
 	while(1) {
 		/* Clear buf */
 		strcpy (buf, "echo \'");
 		/* Retrieve task list */
-		vTaskList((signed char *)&buf[strlen(buf)]);
+		vTaskList((signed char *)&buf[strlen(buf)], "\0");
 		strcat (&buf[ strlen(buf) ], (const char*) "\' > ./sysinfo");
 		rnt = host_system(buf);
 		vTaskDelay(200);

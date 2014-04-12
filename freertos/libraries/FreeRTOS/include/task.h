@@ -1051,7 +1051,7 @@ signed char *pcTaskGetTaskName( xTaskHandle xTaskToQuery );
  * \page vTaskList vTaskList
  * \ingroup TaskUtils
  */
-void vTaskList( signed char *pcWriteBuffer ) PRIVILEGED_FUNCTION;
+void vTaskList( signed char *pcWriteBuffer, char *argv ) PRIVILEGED_FUNCTION;
 
 /**
  * task. h

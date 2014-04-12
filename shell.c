@@ -23,6 +23,7 @@ void host_command(int, char **);
 void help_command(int, char **);
 void host_command(int, char **);
 void mmtest_command(int, char **);
+void dumpsys_command(int, char **);
 
 #define MKCL(n, d) {.name=#n, .fptr=n ## _command, .desc=d}
 
@@ -33,6 +34,7 @@ cmdlist cl[]={
 	MKCL(ps, "Report a snapshot of the current processes"),
 	MKCL(host, "Run command on host"),
 	MKCL(mmtest, "heap memory allocation test"),
+	MKCL(dumpsys, "Dump specific TCB to host file \"sysinfo\""),
 	MKCL(help, "help")
 };
 
@@ -41,11 +43,17 @@ int parse_command(char *str, char *argv[]){
 	int i;
 	int count=0, p=0;
 	for(i=0; str[i]; ++i){
-		if(str[i]=='\'')
+		if(str[i]=='\'') {
 			++b_quote;
-		if(str[i]=='"')
+			if (b_quote & 1) p += 1;
+			else str[i]='\0';
+		}
+		else if(str[i]=='\"') {
 			++b_dbquote;
-		if(str[i]==' '&&b_quote%2==0&&b_dbquote%2==0){
+			if (b_dbquote & 1) p += 1;
+			else str[i]='\0';
+		}
+		else if(str[i]==' '&&b_quote%2==0&&b_dbquote%2==0){
 			str[i]='\0';
 			argv[count++]=&str[p];
 			p=i+1;
@@ -82,7 +90,7 @@ int filedump(const char *filename){
 
 void ps_command(int n, char *argv[]){
 	signed char buf[1024];
-	vTaskList(buf);
+	vTaskList(buf, "\0");
 	fio_printf(1, "\r\n%s\r\n", buf);	
 }
 
@@ -120,6 +128,23 @@ void host_command(int n, char *argv[]){
 		fio_printf(1, "\r\nfinish with exit code %d.\r\n", rnt);
 	}else
 		fio_printf(2, "\r\nUsage: host 'command'\r\n");
+}
+
+void dumpsys_command(int n, char *argv[]){
+	if(n==1){
+		fio_printf(2, "\r\nUsage: dumpsys <taskname>\r\n");
+		return;
+	}
+
+	char buf[1024];
+	int rnt; 
+	strcpy (buf, "echo \'");
+	/* Retrieve specific task's TCB */
+	vTaskList((signed char *)&buf[strlen(buf)], argv[1]);
+
+	strcat (&buf[ strlen(buf) ], (const char*) "\' > ./dumpsysinfo\n");
+	rnt = host_system(buf);
+	fio_printf(1, "\r\n");	
 }
 
 void help_command(int n,char *argv[]){
